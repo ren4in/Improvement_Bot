@@ -7,7 +7,7 @@ using Newtonsoft.Json;
 
 namespace Improvement_Bot
 {
-    public class Api
+    public static class Api
     {
         public const string APP_PATH = "http://localhost:44731";
         public static readonly HttpClient client = new HttpClient();
@@ -16,6 +16,11 @@ namespace Improvement_Bot
         private const string UserDataFile = "userData.json";
         private const string UserStatesFile = "userStates.json";
         private const string UserInfoFile = "userInfoDict.json";
+
+        // Словарь для хранения состояний пользователей
+        public static ConcurrentDictionary<long, string> UserStates = LoadUserStates();
+        // Словарь для хранения информации о пользователях
+        public static ConcurrentDictionary<long, UserInfo> UserInfoDict = LoadUserInfo();
 
         public static async Task<(int, string)> UserAuthAsync(string email, string password)
         {
@@ -55,7 +60,7 @@ namespace Improvement_Bot
             File.WriteAllText(UserDataFile, JsonConvert.SerializeObject(userData));
         }
 
-        public static bool LoadUserData(out string token, out string role, out int? userId)
+          public  static   bool LoadUserData(out string token, out string role, out int? userId)
         {
             if (File.Exists(UserDataFile))
             {
