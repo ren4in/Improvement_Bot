@@ -30,11 +30,38 @@ namespace Improvement_Bot
             var data = callbackQuery.Data;
             var chatId = callbackQuery.Message.Chat.Id;
 
-            // Логирование данных для отладки
-            Console.WriteLine($"Received callback data: {data}");
-
             switch (data)
             {
+                case var s when s.StartsWith("assign_task_"):
+                    int executorId;
+                    if (int.TryParse(data.Substring("assign_task_".Length), out executorId))
+                    {
+                        UserSessionManager.SetExecutorId(chatId, executorId);
+                        await botClient.SendTextMessageAsync(chatId, "Исполнитель выбран. Пожалуйста, введите заголовок поручения.");
+                        UserSessionManager.SetOrderCreationState(chatId, UserSessionManager.OrderCreationState.Header);
+                    }
+                    else
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Ошибка выбора исполнителя.");
+                    }
+                    break;
+
+                case var s when s.StartsWith("save_order_"):
+                    var currentOrder = UserSessionManager.GetCurrentOrder(chatId);
+                    if (currentOrder != null)
+                    {
+                        await OrderHandler.SaveOrderAsync(currentOrder, botClient, chatId);
+                    }
+                    else
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Текущий заказ не найден.");
+                    }
+                    break;
+
+                case var s when s.StartsWith("edit_order_"):
+                    await botClient.SendTextMessageAsync(chatId, "Редактирование поручения пока не реализовано.");
+                    break;
+
                 case "admin_users":
                     await UsersMenuHandler.ShowUsersMenu(botClient, chatId);
                     break;
@@ -53,6 +80,9 @@ namespace Improvement_Bot
                 case "user_list_users":
                 case "user_find_user":
                 case "user_back":
+                case "user_assign_task":
+                case "user_prev_user":
+                case "user_next_user":
                     await UserHandler.HandleUserCommands(botClient, chatId, data);
                     break;
 

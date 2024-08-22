@@ -13,7 +13,7 @@ namespace Improvement_Bot
             {
                 new[]
                 {
-                    InlineKeyboardButton.WithCallbackData("Все пользователи", "list_users"),
+                    InlineKeyboardButton.WithCallbackData("Все пользователи", "user_list_users"),
                     InlineKeyboardButton.WithCallbackData("Найти пользователя по фамилии", "find_user")
                 },
                 new[]

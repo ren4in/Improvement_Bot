@@ -4,6 +4,7 @@ using System.Net.Http;
 using System.Net.Http.Headers;
 using System.Net;
 using Newtonsoft.Json;
+using System.Text;
 
 namespace Improvement_Bot
 {
@@ -53,7 +54,48 @@ namespace Improvement_Bot
                 throw new HttpRequestException("Error", null, response.StatusCode);
             }
         }
+        public static async Task SaveOrder(Order order)
+        {
+            var jsonContent = JsonConvert.SerializeObject(order);
+            var content = new StringContent(jsonContent, Encoding.UTF8, "application/json");
 
+            HttpResponseMessage response = await client.PostAsync(APP_PATH + "/api/Orders", content);
+
+            if (!response.IsSuccessStatusCode)
+            {
+                // Обработка ошибок
+            }
+        }
+
+        public static async Task LoadUsers()
+        {
+            HttpResponseMessage response = await Api.client.GetAsync(Api.APP_PATH + "/api/Users");
+
+            if (response.IsSuccessStatusCode)
+            {
+                var usersJson = await response.Content.ReadAsStringAsync();
+                UserDataStore.allUsers = JsonConvert.DeserializeObject<List<User>>(usersJson);
+            }
+            else
+            {
+                Console.WriteLine("Ошибка загрузки пользователей.");
+            }
+        }
+
+        public static async Task LoadUsers(string searchText)
+        {
+            HttpResponseMessage response = await Api.client.GetAsync(Api.APP_PATH + "/api/Users/search?searchText=" + searchText);
+
+            if (response.IsSuccessStatusCode)
+            {
+                var usersJson = await response.Content.ReadAsStringAsync();
+                UserDataStore.allUsers = JsonConvert.DeserializeObject<List<User>>(usersJson);
+            }
+            else
+            {
+                Console.WriteLine("Ошибка загрузки пользователей.");
+            }
+        }
         public static void SaveUserData(string token, string role, int userId)
         {
             var userData = new { Token = token, Role = role, UserId = userId };

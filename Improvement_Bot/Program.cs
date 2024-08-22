@@ -5,6 +5,7 @@ using Telegram.Bot.Polling;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.Enums;
 using System.Threading.Tasks;
+using static Improvement_Bot.UserSessionManager;
 
 class Program
 {
@@ -38,7 +39,20 @@ class Program
                 var message = update.Message;
                 if (message != null)
                 {
-                    await AuthManager.HandleAuthorization(botClient, message);
+                    // Проверяем, находится ли пользователь в процессе создания поручения
+                    var chatId = message.Chat.Id;
+                    var orderCreationState = UserSessionManager.GetOrderCreationState(chatId);
+
+                    if (orderCreationState != OrderCreationState.None)
+                    {
+                        // Обрабатываем шаги создания поручения
+                        await OrderHandler.HandleOrderCreation(botClient, chatId, message.Text);
+                    }
+                    else
+                    {
+                        // Если процесс создания поручения не активен, выполняем авторизацию
+                        await AuthManager.HandleAuthorization(botClient, message);
+                    }
                 }
             }
             else if (update.Type == UpdateType.CallbackQuery)
