@@ -17,6 +17,7 @@ namespace Improvement_Bot
         private const string UserDataFile = "userData.json";
         private const string UserStatesFile = "userStates.json";
         private const string UserInfoFile = "userInfoDict.json";
+ 
 
         // Словарь для хранения состояний пользователей
         public static ConcurrentDictionary<long, string> UserStates = LoadUserStates();
@@ -66,6 +67,28 @@ namespace Improvement_Bot
                 // Обработка ошибок
             }
         }
+
+        public static async 
+        Task
+LoadOrders(int? thisUser)
+        {
+             HttpResponseMessage response = await
+
+                Api.client.GetAsync(Api.APP_PATH + "/api/Orders/user/" + thisUser);
+            Console.WriteLine(Api.APP_PATH + "/api/Orders/user/" + thisUser);
+            if (response.IsSuccessStatusCode)
+            {
+                var ordersJson = await response.Content.ReadAsStringAsync();
+                OrderDataStore.allOrders = JsonConvert.DeserializeObject<List<Order>>(ordersJson);
+                Console.WriteLine("Отчеты загружены!");
+
+            }
+            else
+            {
+                Console.WriteLine("Ошибка сервера!");
+            }
+        }
+
 
         public static async Task LoadUsers()
         {

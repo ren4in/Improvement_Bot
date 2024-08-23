@@ -58,6 +58,7 @@ namespace Improvement_Bot
                     }
                     break;
 
+
                 case var s when s.StartsWith("edit_order_"):
                     await botClient.SendTextMessageAsync(chatId, "Редактирование поручения пока не реализовано.");
                     break;
@@ -72,9 +73,11 @@ namespace Improvement_Bot
 
                 case "task_list_tasks":
                 case "task_employee_tasks":
-                case "task_add_task":
+                case "user_prev_order":
+                case "user_next_order":
+                 case "task_add_task":
                 case "task_back":
-                    await TaskHandler.HandleTaskCommands(botClient, chatId, data);
+                    await OrderHandler.HandleOrderCommands(botClient, chatId, data);
                     break;
 
                 case "user_list_users":

@@ -8,6 +8,8 @@ using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
 using Improvement_Bot;
 using static Improvement_Bot.UserSessionManager;
+using Telegram.Bot.Requests;
+using static System.Runtime.InteropServices.JavaScript.JSType;
 
 public static class OrderHandler
 {
@@ -53,8 +55,47 @@ public static class OrderHandler
                     await botClient.SendTextMessageAsync(chatId, "Неверный формат даты. Попробуйте снова:");
                 }
                 break;
+
         }
     }
+    private static async Task ShowOrderDetails(ITelegramBotClient botClient, long chatId, int orderIndex)
+    {
+        if (OrderDataStore.allOrders == null || OrderDataStore.allOrders.Count == 0)
+        {
+            await botClient.SendTextMessageAsync(chatId, "Список поручений пуст.");
+            return;
+        }
+
+        // Обеспечиваем циклическое переключение поручений
+        orderIndex = (orderIndex + OrderDataStore.allOrders.Count) % OrderDataStore.allOrders.Count;
+
+        // Сохраняем текущий индекс поручения
+        UserSessionManager.SetCurrentUserIndex(chatId, orderIndex);
+
+        var order = OrderDataStore.allOrders[orderIndex];
+        var orderInfo = $"Заголовок: {order.Header}\n" +
+                        $"Дата выдачи: {order.Date_of_Issue}\n" +
+                        $"Содержание: {order.Text}\n" +
+                        $"Срок выполнения: {order.Deadline}\n" +
+                        $"ID: {order.id_Executor}";
+
+        var inlineKeyboard = new InlineKeyboardMarkup(new[]
+        {
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData("⬅️", "user_prev_order"),
+            InlineKeyboardButton.WithCallbackData("Написать отчет", $"make_report{order.id_Executor}"),
+            InlineKeyboardButton.WithCallbackData("➡️", "user_next_order")
+        },
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData("Назад", "user_back")
+        }
+    });
+
+        await botClient.SendTextMessageAsync(chatId, orderInfo, replyMarkup: inlineKeyboard);
+    }
+
 
     private static async Task SendOrderSummaryWithButtons(ITelegramBotClient botClient, long chatId, Order order)
     {
@@ -77,6 +118,69 @@ public static class OrderHandler
 
         await botClient.SendTextMessageAsync(chatId, summaryMessage, replyMarkup: inlineKeyboard);
     }
+    public static async Task HandleOrderCommands(ITelegramBotClient botClient, long chatId, string command)
+    {
+        // Объявляем role один раз для использования в обоих блоках if
+        string role;
+
+        switch (command)
+        {
+            case "task_list_tasks":
+                if (Api.LoadUserData(out _, out role, out int? userId))
+                {
+                   await Api.LoadOrders(userId);
+                  await  ShowOrderDetails(botClient, chatId, 0);
+                }
+                break;
+
+            case "task_employee_tasks":
+                await botClient.SendTextMessageAsync(chatId, "Введите ID сотрудника для получения поручений:");
+                break;
+
+            case "task_add_task":
+                await botClient.SendTextMessageAsync(chatId, "Введите данные нового поручения:");
+                break;
+
+            case "user_prev_order":
+                int prevIndex = UserSessionManager.GetCurrentUserIndex(chatId) - 1;
+                await ShowOrderDetails(botClient, chatId, prevIndex);
+                break;
+
+            case "user_next_order":
+                int nextIndex = UserSessionManager.GetCurrentUserIndex(chatId) + 1;
+                await ShowOrderDetails(botClient, chatId, nextIndex);
+                break;
+
+            // Другие команды...
+           
+        
+
+            case "task_back":
+                // Используем ту же переменную role
+                if (Api.LoadUserData(out _, out role, out _))
+                {
+                    await MenuManager.ShowMenu(botClient, chatId, role);
+                }
+                else
+                {
+                    await botClient.SendTextMessageAsync(chatId, "Не удалось загрузить данные пользователя.");
+                }
+                break;
+
+            default:
+                await botClient.SendTextMessageAsync(chatId, "Неизвестная команда.");
+                break;
+        }
+    }
+
+
+
+
+
+
+
+
+
 
     public static async Task SaveOrderAsync(Order order, ITelegramBotClient botClient, long chatId)
     {
@@ -84,26 +188,18 @@ public static class OrderHandler
         var content = new StringContent(orderJson, Encoding.UTF8, "application/json");
 
         HttpResponseMessage response;
-        if (order.id_Order == 0) // Если ID заказа отсутствует, создаем новый заказ
+        if (order.id_Order == null) // Если ID заказа отсутствует, создаем новый заказ
         {
             response = await Api.client.PostAsync(Api.APP_PATH + "/api/Orders", content);
-            Console.WriteLine("ПЛОХО");
 
         }
         else
         {
             response = await Api.client.PostAsync(Api.APP_PATH + "/api/orders", content);
-            Console.WriteLine("ПЛОХО");
-
+ 
         }
-
-        Console.WriteLine("контент" + content);
-        Console.WriteLine("жопа" + orderJson);
-
-        Console.WriteLine("Путь " + (Api.APP_PATH + "/api/orders/"));
+ 
         var responseBody = await response.Content.ReadAsStringAsync();
-        Console.WriteLine($"Response Status Code: {response.StatusCode}");
-        Console.WriteLine($"Response Body: {responseBody}");
 
         if (response.IsSuccessStatusCode)
         {
