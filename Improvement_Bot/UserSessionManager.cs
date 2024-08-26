@@ -13,10 +13,10 @@ namespace Improvement_Bot
 
         private static Dictionary<long, int> executorIds = new();  // Хранение ID исполнителя
 
+        // Методы для управления состоянием создания поручений
         public static void SetExecutorId(long chatId, int executorId) => executorIds[chatId] = executorId;
         public static int GetExecutorId(long chatId) => executorIds.TryGetValue(chatId, out var executorId) ? executorId : 0;
 
-        // Методы для управления состоянием создания поручений
         public static void SetOrderCreationState(long chatId, OrderCreationState state) => orderCreationStates[chatId] = state;
         public static OrderCreationState GetOrderCreationState(long chatId) => orderCreationStates.TryGetValue(chatId, out var state) ? state : OrderCreationState.None;
 
@@ -28,7 +28,7 @@ namespace Improvement_Bot
 
         public static void SetOrderDeadline(long chatId, DateTime deadline) => orderDeadlines[chatId] = deadline;
         public static DateTime GetOrderDeadline(long chatId) => orderDeadlines.TryGetValue(chatId, out var deadline) ? deadline : DateTime.MinValue;
-        
+
         public static void ClearOrderCreationState(long chatId)
         {
             orderCreationStates.Remove(chatId);
@@ -37,6 +37,50 @@ namespace Improvement_Bot
             orderDeadlines.Remove(chatId);
         }
 
+        public enum ReportCreationState
+        {
+            None,       // Нет активного процесса создания отчета
+            Header,     // Ввод заголовка отчета
+            Text        // Ввод текста отчета
+        }
+
+        private static Dictionary<long, ReportCreationState> reportCreationStates = new();
+        private static ConcurrentDictionary<long, Report> currentReports = new ConcurrentDictionary<long, Report>();
+        private static readonly Dictionary<long, int> _reportMessageIds = new Dictionary<long, int>();
+
+        public static void SetReportMessageId(long chatId, int messageId)
+        {
+            _reportMessageIds[chatId] = messageId;
+        }
+
+        public static int GetReportMessageId(long chatId)
+        {
+            return _reportMessageIds.TryGetValue(chatId, out var messageId) ? messageId : 0;
+        }
+    
+
+    public static void SetReportCreationState(long chatId, ReportCreationState state) => reportCreationStates[chatId] = state;
+        public static ReportCreationState GetReportCreationState(long chatId) => reportCreationStates.TryGetValue(chatId, out var state) ? state : ReportCreationState.None;
+
+        public static void ClearReportCreationState(long chatId)
+        {
+            reportCreationStates.Remove(chatId);
+        }
+
+        public static Report GetCurrentReport(long chatId)
+        {
+            if (!currentReports.TryGetValue(chatId, out var report))
+            {
+                report = new Report();  // Используем метод для создания нового отчета
+                currentReports[chatId] = report;
+            }
+            return report;
+        }
+
+        public static void ClearCurrentReport(long chatId)
+        {
+            currentReports.TryRemove(chatId, out _);
+        }
 
         public enum OrderCreationState
         {
@@ -44,6 +88,16 @@ namespace Improvement_Bot
             Header,     // Ввод заголовка поручения
             Text,       // Ввод текста поручения
             Deadline    // Ввод срока выполнения поручения
+        }
+
+        public static int GetCurrentUserIndex(long chatId)
+        {
+            if (!UserIndices.ContainsKey(chatId))
+            {
+                UserIndices[chatId] = 0;
+            }
+
+            return UserIndices[chatId];
         }
 
         public static Order GetCurrentOrder(long chatId)
@@ -56,26 +110,15 @@ namespace Improvement_Bot
             return order;
         }
 
-        public static void ClearCurrentOrder(long chatId)
-        {
-            currentOrders.TryRemove(chatId, out _);
-        }
-    
-
-    public static int GetCurrentUserIndex(long chatId)
-        {
-            if (!UserIndices.ContainsKey(chatId))
-            {
-                UserIndices[chatId] = 0;
-            }
-
-            return UserIndices[chatId];
-        }
-
 
         public static void SetCurrentUserIndex(long chatId, int index)
         {
             UserIndices[chatId] = index;
+        }
+
+        public static void SetCurrentReport(long chatId, Report report)
+        {
+            currentReports[chatId] = report;
         }
     }
 }

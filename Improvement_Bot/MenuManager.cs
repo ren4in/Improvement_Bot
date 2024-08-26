@@ -1,4 +1,5 @@
-﻿using System.Threading.Tasks;
+﻿using System.ComponentModel.Design;
+using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
@@ -24,12 +25,33 @@ namespace Improvement_Bot
                 await botClient.SendTextMessageAsync(chatId, "Роль не определена.");
             }
         }
-
         public static async Task HandleCallbackQuery(ITelegramBotClient botClient, CallbackQuery callbackQuery)
         {
             var data = callbackQuery.Data;
             var chatId = callbackQuery.Message.Chat.Id;
+            var orderCreationState = UserSessionManager.GetOrderCreationState(chatId);
+            var reportCreationState = UserSessionManager.GetReportCreationState(chatId);
 
+            // Проверяем состояния создания заказа и отчета
+            if (orderCreationState != UserSessionManager.OrderCreationState.None ||
+                reportCreationState != UserSessionManager.ReportCreationState.None)
+            {
+
+                // Обработка команды сохранения или редактирования отчета
+                /*   if (data == "save_report" || data == "edit_report")
+                   {
+                            await ReportHandler.HandleCallbackQuery(botClient, callbackQuery);
+                           return;
+                   }
+                */
+                // Если текущее состояние активно, но команда не относится к сохранению/редактированию, показываем сообщение
+                UserSessionManager.ClearOrderCreationState(chatId);
+                UserSessionManager.ClearReportCreationState(chatId);
+
+                return;
+            }
+
+            // Обработка других коллбеков
             switch (data)
             {
                 case var s when s.StartsWith("assign_task_"):
@@ -57,6 +79,17 @@ namespace Improvement_Bot
                         await botClient.SendTextMessageAsync(chatId, "Текущий заказ не найден.");
                     }
                     break;
+                case var s when s.StartsWith("save_report_"):
+                    var currentReport = UserSessionManager.GetCurrentReport(chatId);
+                    if (currentReport != null)
+                    {
+                        await ReportHandler.SaveReportAsync(botClient, chatId);
+                    }
+                    else
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Текущий заказ не найден.");
+                    }
+                    break;
 
 
                 case var s when s.StartsWith("edit_order_"):
@@ -75,7 +108,7 @@ namespace Improvement_Bot
                 case "task_employee_tasks":
                 case "user_prev_order":
                 case "user_next_order":
-                 case "task_add_task":
+                case "task_add_task":
                 case "task_back":
                     await OrderHandler.HandleOrderCommands(botClient, chatId, data);
                     break;
@@ -94,10 +127,20 @@ namespace Improvement_Bot
                     await ReportHandler.HandleReportCommands(botClient, chatId, data);
                     break;
 
+                case var s when s.StartsWith("make_report"):
+                    await ReportHandler.HandleReportCommands(botClient, chatId, s);
+                    break;
+
+                case "save_report":
+                case "edit_report":
+                    await ReportHandler.HandleCallbackQuery(botClient, callbackQuery);
+                    break;
+
                 default:
                     await botClient.SendTextMessageAsync(chatId, $"Неизвестная команда: {data}");
                     break;
             }
+          
 
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
         }

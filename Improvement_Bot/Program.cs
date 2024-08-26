@@ -42,17 +42,24 @@ class Program
                     // Проверяем, находится ли пользователь в процессе создания поручения
                     var chatId = message.Chat.Id;
                     var orderCreationState = UserSessionManager.GetOrderCreationState(chatId);
+                    var reportCreationState = UserSessionManager.GetReportCreationState(chatId);
 
                     if (orderCreationState != OrderCreationState.None)
                     {
                         // Обрабатываем шаги создания поручения
                         await OrderHandler.HandleOrderCreation(botClient, chatId, message.Text);
                     }
+                    else if (reportCreationState!=ReportCreationState.None)
+                    {
+                        await ReportHandler.HandleReportCreation(botClient, chatId, message.Text);
+
+                    }
                     else
                     {
                         // Если процесс создания поручения не активен, выполняем авторизацию
                         await AuthManager.HandleAuthorization(botClient, message);
                     }
+                   
                 }
             }
             else if (update.Type == UpdateType.CallbackQuery)
