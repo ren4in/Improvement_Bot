@@ -137,8 +137,8 @@ namespace Improvement_Bot
 
                 case "add_more_photo":
                 case "finish_report":
-                await PhotoHandler.HandleCallbackQuery(botClient, callbackQuery);
-                break;
+                    await PhotoHandler.HandleCallbackQuery(botClient, callbackQuery);
+                    break;
 
                 case "save_report":
                 case "edit_report":
@@ -149,7 +149,7 @@ namespace Improvement_Bot
                     await botClient.SendTextMessageAsync(chatId, $"Неизвестная команда: {data}");
                     break;
             }
-          
+
 
             await botClient.AnswerCallbackQueryAsync(callbackQuery.Id);
         }

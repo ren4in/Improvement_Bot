@@ -1,15 +1,9 @@
-﻿using System;
-using System.Net.Http;
-using System.Text;
-using System.Threading.Tasks;
+﻿using Improvement_Bot;
 using Newtonsoft.Json;
-using Telegram.Bot;
-using Telegram.Bot.Types;
+using System.Text;
 using Telegram.Bot.Types.ReplyMarkups;
-using Improvement_Bot;
-using static Improvement_Bot.UserSessionManager;
-using Telegram.Bot.Requests;
-using static System.Runtime.InteropServices.JavaScript.JSType;
+using Telegram.Bot;
+
 public static class OrderHandler
 {
     public static async Task HandleOrderCreation(ITelegramBotClient botClient, long chatId, string userInput)
@@ -48,7 +42,7 @@ public static class OrderHandler
                     currentOrder.Deadline = deadline;
                     currentOrder.Date_of_Issue = DateTime.Now;
 
-                    // Отправляем информацию о поручении с кнопками (как новое сообщение)
+                    // Отправляем информацию о поручении с кнопками
                     await SendOrderSummaryWithButtons(botClient, chatId, currentOrder);
                 }
                 else
@@ -56,6 +50,47 @@ public static class OrderHandler
                     await botClient.SendTextMessageAsync(chatId, "Неверный формат даты. Попробуйте снова:");
                 }
                 break;
+        }
+    }
+
+    private static async Task SendOrderSummaryWithButtons(ITelegramBotClient botClient, long chatId, Order order)
+    {
+        var summaryMessage = $"Поручение:\n\n" +
+                             $"ID Руководителя: {order.id_Supervisor}\n" +
+                             $"ID Исполнителя: {order.id_Executor}\n" +
+                             $"Заголовок: {order.Header}\n" +
+                             $"Дата выдачи: {order.Date_of_Issue?.ToString("yyyy-MM-dd")}\n" +
+                             $"Срок выполнения: {order.Deadline?.ToString("yyyy-MM-dd")}\n" +
+                             $"Текст поручения: {order.Text}";
+
+        var inlineKeyboard = new InlineKeyboardMarkup(new[]
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Сохранить", $"save_order_{order.id_Order}"),
+                InlineKeyboardButton.WithCallbackData("Изменить", $"edit_order_{order.id_Order}")
+            }
+        });
+
+        // Если ID сообщения уже сохранен, редактируем его, иначе отправляем новое сообщение
+        var messageId = UserSessionManager.GetReportMessageId(chatId);
+        if (messageId != null)
+        {
+            try
+            {
+                await botClient.EditMessageTextAsync(chatId, (int)messageId, summaryMessage, replyMarkup: inlineKeyboard);
+            }
+            catch (Exception ex)
+            {
+                // Если произошла ошибка редактирования, отправляем новое сообщение
+                var sentMessage = await botClient.SendTextMessageAsync(chatId, summaryMessage, replyMarkup: inlineKeyboard);
+                UserSessionManager.SetReportMessageId(chatId, sentMessage.MessageId);
+            }
+        }
+        else
+        {
+            var sentMessage = await botClient.SendTextMessageAsync(chatId, summaryMessage, replyMarkup: inlineKeyboard);
+            UserSessionManager.SetReportMessageId(chatId, sentMessage.MessageId);
         }
     }
 
@@ -68,7 +103,6 @@ public static class OrderHandler
         }
 
         orderIndex = (orderIndex + OrderDataStore.allOrders.Count) % OrderDataStore.allOrders.Count;
-
         UserSessionManager.SetCurrentUserIndex(chatId, orderIndex);
 
         var order = OrderDataStore.allOrders[orderIndex];
@@ -92,47 +126,25 @@ public static class OrderHandler
             }
         });
 
-        int? messageId = UserSessionManager.GetReportMessageId(chatId);
-
-        if (messageId == null)
-        {
-            var sentMessage = await botClient.SendTextMessageAsync(chatId, orderInfo, replyMarkup: inlineKeyboard);
-            UserSessionManager.SetReportMessageId(chatId, sentMessage.MessageId);
-        }
-        else
+        var messageId = UserSessionManager.GetReportMessageId(chatId);
+        if (messageId != null)
         {
             try
             {
-              await botClient.EditMessageTextAsync(chatId, messageId.Value, orderInfo, replyMarkup: inlineKeyboard);
+                await botClient.EditMessageTextAsync(chatId, (int)messageId, orderInfo, replyMarkup: inlineKeyboard);
             }
-            catch (Telegram.Bot.Exceptions.ApiRequestException ex) when (ex.Message.Contains("message to edit not found"))
+            catch (Exception ex)
             {
+                // Если произошла ошибка редактирования, отправляем новое сообщение
                 var sentMessage = await botClient.SendTextMessageAsync(chatId, orderInfo, replyMarkup: inlineKeyboard);
                 UserSessionManager.SetReportMessageId(chatId, sentMessage.MessageId);
             }
         }
-    }
-
-    private static async Task SendOrderSummaryWithButtons(ITelegramBotClient botClient, long chatId, Order order)
-    {
-        var summaryMessage = $"Поручение:\n\n" +
-                             $"ID Руководителя: {order.id_Supervisor}\n" +
-                             $"ID Исполнителя: {order.id_Executor}\n" +
-                             $"Заголовок: {order.Header}\n" +
-                             $"Дата выдачи: {order.Date_of_Issue?.ToString("yyyy-MM-dd")}\n" +
-                             $"Срок выполнения: {order.Deadline?.ToString("yyyy-MM-dd")}\n" +
-                             $"Текст поручения: {order.Text}";
-
-        var inlineKeyboard = new InlineKeyboardMarkup(new[]
+        else
         {
-            new[]
-            {
-                InlineKeyboardButton.WithCallbackData("Сохранить", $"save_order_{order.id_Order}"),
-                InlineKeyboardButton.WithCallbackData("Изменить", $"edit_order_{order.id_Order}")
-            }
-        });
-
-        await botClient.SendTextMessageAsync(chatId, summaryMessage, replyMarkup: inlineKeyboard);
+            var sentMessage = await botClient.SendTextMessageAsync(chatId, orderInfo, replyMarkup: inlineKeyboard);
+            UserSessionManager.SetReportMessageId(chatId, sentMessage.MessageId);
+        }
     }
 
     public static async Task HandleOrderCommands(ITelegramBotClient botClient, long chatId, string command)
