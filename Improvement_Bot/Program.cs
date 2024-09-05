@@ -51,7 +51,7 @@ class Program
                     }
                     else if (reportCreationState!=ReportCreationState.None)
                     {
-                        await ReportHandler.HandleReportCreation(botClient, chatId, message.Text);
+                        await ReportHandler.HandleReportCreation(botClient, chatId, message.Text, message);
 
                     }
                     else

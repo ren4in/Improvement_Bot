@@ -41,7 +41,8 @@ namespace Improvement_Bot
         {
             None,       // Нет активного процесса создания отчета
             Header,     // Ввод заголовка отчета
-            Text        // Ввод текста отчета
+            Text,        // Ввод текста отчета
+            AddingPhoto
         }
 
         private static Dictionary<long, ReportCreationState> reportCreationStates = new();
@@ -78,6 +79,10 @@ namespace Improvement_Bot
         }
 
         public static void ClearCurrentReport(long chatId)
+        {
+            currentReports.TryRemove(chatId, out _);
+        }
+        public static void ClearCurrentOrder(long chatId)
         {
             currentReports.TryRemove(chatId, out _);
         }

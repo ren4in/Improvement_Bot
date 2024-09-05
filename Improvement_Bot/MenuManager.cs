@@ -79,11 +79,14 @@ namespace Improvement_Bot
                         await botClient.SendTextMessageAsync(chatId, "Текущий заказ не найден.");
                     }
                     break;
-                case var s when s.StartsWith("save_report_"):
+                case var s when s.StartsWith("_photo_report_"):
                     var currentReport = UserSessionManager.GetCurrentReport(chatId);
                     if (currentReport != null)
                     {
-                        await ReportHandler.SaveReportAsync(botClient, chatId);
+                        await botClient.SendTextMessageAsync(chatId, "Пожалуйста, отправьте фото для добавления в отчет.");
+                        UserSessionManager.SetReportCreationState(chatId, UserSessionManager.ReportCreationState.AddingPhoto);
+                        return;
+
                     }
                     else
                     {
@@ -131,6 +134,12 @@ namespace Improvement_Bot
                     await ReportHandler.HandleReportCommands(botClient, chatId, s);
                     break;
 
+
+                case "add_more_photo":
+                case "finish_report":
+                await PhotoHandler.HandleCallbackQuery(botClient, callbackQuery);
+                break;
+
                 case "save_report":
                 case "edit_report":
                     await ReportHandler.HandleCallbackQuery(botClient, callbackQuery);
@@ -159,7 +168,7 @@ namespace Improvement_Bot
             await botClient.SendTextMessageAsync(chatId, "Выберите действие:", replyMarkup: inlineKeyboard);
         }
 
-        private static async Task ShowUserMenu(ITelegramBotClient botClient, long chatId)
+        public static async Task ShowUserMenu(ITelegramBotClient botClient, long chatId)
         {
             var inlineKeyboard = new InlineKeyboardMarkup(new[]
             {
