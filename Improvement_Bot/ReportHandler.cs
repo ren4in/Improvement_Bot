@@ -31,7 +31,10 @@
 
                     await ReportHandler.SaveReportAsync(botClient, chatId);
 
-                    var inlineKeyboard = new InlineKeyboardMarkup(new[]
+                UserSessionManager.ClearOrderCreationState(chatId);
+                UserSessionManager.ClearReportCreationState(chatId);
+
+                var inlineKeyboard = new InlineKeyboardMarkup(new[]
                     {
                     new[]
                     {
@@ -41,7 +44,7 @@
                 });
 
                     await botClient.SendTextMessageAsync(chatId, reportInfo, replyMarkup: inlineKeyboard);
-                    UserSessionManager.SetReportCreationState(chatId, UserSessionManager.ReportCreationState.AddingPhoto);
+             //       UserSessionManager.SetReportCreationState(chatId, UserSessionManager.ReportCreationState.AddingPhoto);
                     break;
 
                 case UserSessionManager.ReportCreationState.AddingPhoto:

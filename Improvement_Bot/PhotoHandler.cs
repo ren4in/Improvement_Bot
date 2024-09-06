@@ -67,6 +67,8 @@ namespace Improvement_Bot
                     await botClient.SendTextMessageAsync(chatId, "Фотография добавлена к отчету.");
 
                     // Предлагаем пользователю добавить еще фото
+                    UserSessionManager.ClearReportCreationState(chatId);
+
                     var keyboard = new Telegram.Bot.Types.ReplyMarkups.InlineKeyboardMarkup(
                         new[]
                         {

@@ -34,7 +34,7 @@ namespace Improvement_Bot
 
             // Проверяем состояния создания заказа и отчета
             if (orderCreationState != UserSessionManager.OrderCreationState.None ||
-                reportCreationState != UserSessionManager.ReportCreationState.None)
+                reportCreationState != UserSessionManager.ReportCreationState.None )
             {
 
                 // Обработка команды сохранения или редактирования отчета
