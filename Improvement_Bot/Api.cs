@@ -68,9 +68,7 @@ namespace Improvement_Bot
             }
         }
 
-        public static async 
-        Task
-LoadOrders(int? thisUser)
+        public static async       Task LoadOrders(int? thisUser)
         {
              HttpResponseMessage response = await
 
@@ -90,6 +88,7 @@ LoadOrders(int? thisUser)
         }
 
 
+         
         public static async Task LoadUsers()
         {
             HttpResponseMessage response = await Api.client.GetAsync(Api.APP_PATH + "/api/Users");

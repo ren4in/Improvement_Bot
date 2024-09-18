@@ -57,7 +57,84 @@
             }
         }
 
-        public static async Task HandleReportCommands(ITelegramBotClient botClient, long chatId, string command)
+
+    public static async Task LoadReports(int? thisOrder)
+    {
+        HttpResponseMessage response = await
+
+           Api.client.GetAsync(Api.APP_PATH + "/api/reports/order/" + thisOrder);
+   //     Console.WriteLine(Api.APP_PATH + "/api/Orders/user/" + thisOrder);
+        if (response.IsSuccessStatusCode)
+        {
+            var reportsJson = await response.Content.ReadAsStringAsync();
+            ReportDataStore.allReports = JsonConvert.DeserializeObject<List<Report>>(reportsJson);
+            Console.WriteLine("Отчеты загружены!");
+
+        }
+        else
+        {
+            Console.WriteLine("Ошибка сервера!");
+        }
+    }
+
+
+
+    public static async Task ShowReportDetailsAdmin(ITelegramBotClient botClient, long chatId, int reportIndex)
+    {
+        if (ReportDataStore.allReports == null || ReportDataStore.allReports.Count == 0)
+        {
+            await botClient.SendTextMessageAsync(chatId, "Список отчетов пуст.");
+            return;
+        }
+
+        reportIndex = (reportIndex + ReportDataStore.allReports.Count) % ReportDataStore.allReports.Count;
+        UserSessionManager.SetCurrentUserIndex(chatId, reportIndex);
+
+        var report = ReportDataStore.allReports[reportIndex];
+        var orderInfo = $"Номер: {report.id_Report}\n " +
+                        $"Заголовок: {report.Header}\n" +
+                        $"Текст:  {report.Text}\n" +
+                        $"Статус: {report.Accepted}\n" +
+                        $"Дата написания: {report.Date_Of_Writing}\n" +
+                        $"Комментарий руководителя: {report.Manager_Comment}\n";
+                     
+
+        var inlineKeyboard = new InlineKeyboardMarkup(new[]
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("⬅️", "admin_prev_report"),
+           //     InlineKeyboardButton.WithCallbackData("Отчеты", $"all_reports{order.id_Order}"),
+                InlineKeyboardButton.WithCallbackData("➡️", "admin_next_report")
+            },
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Назад", "user_back")
+            }
+        });
+
+        var messageId = UserSessionManager.GetReportMessageId(chatId);
+        if (messageId != null)
+        {
+            try
+            {
+                await botClient.EditMessageTextAsync(chatId, (int)messageId, orderInfo, replyMarkup: inlineKeyboard);
+            }
+            catch (Exception ex)
+            {
+                // Если произошла ошибка редактирования, отправляем новое сообщение
+                var sentMessage = await botClient.SendTextMessageAsync(chatId, orderInfo, replyMarkup: inlineKeyboard);
+                UserSessionManager.SetReportMessageId(chatId, sentMessage.MessageId);
+            }
+        }
+        else
+        {
+            var sentMessage = await botClient.SendTextMessageAsync(chatId, orderInfo, replyMarkup: inlineKeyboard);
+            UserSessionManager.SetReportMessageId(chatId, sentMessage.MessageId);
+        }
+    }
+
+    public static async Task HandleReportCommands(ITelegramBotClient botClient, long chatId, string command)
         {
             if (command.StartsWith("make_report"))
             {
@@ -65,7 +142,30 @@
                 return;
             }
 
-            if (UserSessionManager.GetReportCreationState(chatId) != UserSessionManager.ReportCreationState.None)
+        if (command.StartsWith("all_reports"))
+        {
+            int idOrder = int.Parse(command.Substring("all_reports".Length).Trim());
+          await  LoadReports(idOrder);
+          await  ShowReportDetailsAdmin(botClient, chatId, 0);
+            return;
+        }
+
+        if (command.StartsWith("admin_prev_report"))
+            {
+            int prevIndexAdminReport = UserSessionManager.GetCurrentUserIndex(chatId) - 1;
+            await ShowReportDetailsAdmin(botClient, chatId, prevIndexAdminReport);
+            return;
+        }
+
+
+        if (command.StartsWith("admin_next_report"))
+        {
+            int nextIndexAdminReport = UserSessionManager.GetCurrentUserIndex(chatId) - 1;
+            await ShowReportDetailsAdmin(botClient, chatId, nextIndexAdminReport);
+            return;
+        }
+
+        if (UserSessionManager.GetReportCreationState(chatId) != UserSessionManager.ReportCreationState.None)
             {
                 await HandleReportCreation(botClient, chatId, command, null);
                 return;

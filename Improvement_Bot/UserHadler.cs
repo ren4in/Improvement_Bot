@@ -27,6 +27,11 @@ namespace Improvement_Bot
                 case "user_assign_task":
                     await StartOrderCreation(botClient, chatId);
                     break;
+                case "tasks":
+                    var executorId = UserSessionManager.GetExecutorId(chatId);
+                    await botClient.SendTextMessageAsync(chatId, $"ID исполнителя: {executorId}");
+
+                    break;
 
                 case "user_back":
                     if (Api.LoadUserData(out _, out string role, out _))
@@ -79,6 +84,8 @@ namespace Improvement_Bot
         {
             InlineKeyboardButton.WithCallbackData("⬅️", "user_prev_user"),
             InlineKeyboardButton.WithCallbackData("Дать поручение", $"assign_task_{user.id_User}"),
+             InlineKeyboardButton.WithCallbackData("Все поручения", $"tasks_{user.id_User}"),
+
             InlineKeyboardButton.WithCallbackData("➡️", "user_next_user")
         },
         new[]

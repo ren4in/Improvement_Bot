@@ -3,6 +3,7 @@ using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
 using Telegram.Bot.Types.ReplyMarkups;
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace Improvement_Bot
 {
@@ -68,6 +69,21 @@ namespace Improvement_Bot
                     }
                     break;
 
+                case var s when s.StartsWith("tasks_"):
+                    int userId;
+                    if (int.TryParse(data.Substring("tasks_".Length), out userId))
+                    {
+                        await Api.LoadOrders(userId);
+                        await OrderHandler.ShowOrderDetailsAdmin(botClient, chatId, 0);
+
+                    }
+                    else
+                    {
+                        await botClient.SendTextMessageAsync(chatId, "Ошибка при получении ID пользователя.");
+                    }
+                    break;
+
+
                 case var s when s.StartsWith("save_order_"):
                     var currentOrder = UserSessionManager.GetCurrentOrder(chatId);
                     if (currentOrder != null)
@@ -111,6 +127,8 @@ namespace Improvement_Bot
                 case "task_employee_tasks":
                 case "user_prev_order":
                 case "user_next_order":
+                case "admin_prev_order":
+                case "admin_next_order":
                 case "task_add_task":
                 case "task_back":
                     await OrderHandler.HandleOrderCommands(botClient, chatId, data);
@@ -127,6 +145,8 @@ namespace Improvement_Bot
 
                 case "report_write_report":
                 case "report_back":
+                case "admin_prev_report":
+                case "admin_next_report":
                     await ReportHandler.HandleReportCommands(botClient, chatId, data);
                     break;
 
@@ -134,6 +154,11 @@ namespace Improvement_Bot
                     await ReportHandler.HandleReportCommands(botClient, chatId, s);
                     break;
 
+                case var s when s.StartsWith("all_reports"):
+                    await ReportHandler.HandleReportCommands(botClient, chatId, s);
+
+                    
+                    break;
 
                 case "add_more_photo":
                 case "finish_report":

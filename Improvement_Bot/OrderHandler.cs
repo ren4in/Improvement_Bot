@@ -94,7 +94,8 @@ public static class OrderHandler
         }
     }
 
-    private static async Task ShowOrderDetails(ITelegramBotClient botClient, long chatId, int orderIndex)
+
+    public static async Task ShowOrderDetailsAdmin(ITelegramBotClient botClient, long chatId, int orderIndex)
     {
         if (OrderDataStore.allOrders == null || OrderDataStore.allOrders.Count == 0)
         {
@@ -106,7 +107,62 @@ public static class OrderHandler
         UserSessionManager.SetCurrentUserIndex(chatId, orderIndex);
 
         var order = OrderDataStore.allOrders[orderIndex];
-        var orderInfo = $"Заголовок: {order.Header}\n" +
+        var orderInfo = $"Исполнитель: {order.id_ExecutorNavigation.LastName} {order.id_ExecutorNavigation.FirstName} {order.id_ExecutorNavigation.MiddleName}\n " +
+                        $"Заголовок: {order.Header}\n" +
+                        $"Дата выдачи: {order.Date_of_Issue}\n" +
+                        $"Содержание: {order.Text}\n" +
+                        $"Срок выполнения: {order.Deadline}\n" +
+                        $"ID: {order.id_Executor}";
+
+        var inlineKeyboard = new InlineKeyboardMarkup(new[]
+        {
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("⬅️", "admin_prev_order"),
+                InlineKeyboardButton.WithCallbackData("Отчеты", $"all_reports{order.id_Order}"),
+                InlineKeyboardButton.WithCallbackData("➡️", "admin_next_order")
+            },
+            new[]
+            {
+                InlineKeyboardButton.WithCallbackData("Назад", "user_back")
+            }
+        });
+
+        var messageId = UserSessionManager.GetReportMessageId(chatId);
+        if (messageId != null)
+        {
+            try
+            {
+                await botClient.EditMessageTextAsync(chatId, (int)messageId, orderInfo, replyMarkup: inlineKeyboard);
+            }
+            catch (Exception ex)
+            {
+                // Если произошла ошибка редактирования, отправляем новое сообщение
+                var sentMessage = await botClient.SendTextMessageAsync(chatId, orderInfo, replyMarkup: inlineKeyboard);
+                UserSessionManager.SetReportMessageId(chatId, sentMessage.MessageId);
+            }
+        }
+        else
+        {
+            var sentMessage = await botClient.SendTextMessageAsync(chatId, orderInfo, replyMarkup: inlineKeyboard);
+            UserSessionManager.SetReportMessageId(chatId, sentMessage.MessageId);
+        }
+    }
+
+    public static async Task ShowOrderDetails(ITelegramBotClient botClient, long chatId, int orderIndex)
+    {
+        if (OrderDataStore.allOrders == null || OrderDataStore.allOrders.Count == 0)
+        {
+            await botClient.SendTextMessageAsync(chatId, "Список поручений пуст.");
+            return;
+        }
+
+        orderIndex = (orderIndex + OrderDataStore.allOrders.Count) % OrderDataStore.allOrders.Count;
+        UserSessionManager.SetCurrentUserIndex(chatId, orderIndex);
+
+        var order = OrderDataStore.allOrders[orderIndex];
+        var orderInfo = $"Исполнитель: {order.id_ExecutorNavigation.LastName} {order.id_ExecutorNavigation.FirstName} {order.id_ExecutorNavigation.MiddleName}\n " +
+                        $"Заголовок: {order.Header}\n" +
                         $"Дата выдачи: {order.Date_of_Issue}\n" +
                         $"Содержание: {order.Text}\n" +
                         $"Срок выполнения: {order.Deadline}\n" +
@@ -122,6 +178,7 @@ public static class OrderHandler
             },
             new[]
             {
+             
                 InlineKeyboardButton.WithCallbackData("Назад", "user_back")
             }
         });
@@ -173,12 +230,23 @@ public static class OrderHandler
                 int prevIndex = UserSessionManager.GetCurrentUserIndex(chatId) - 1;
                 await ShowOrderDetails(botClient, chatId, prevIndex);
                 break;
+            case "admin_prev_order":
+                int prevIndexAdmin = UserSessionManager.GetCurrentUserIndex(chatId) - 1;
+                await ShowOrderDetailsAdmin(botClient, chatId, prevIndexAdmin);
+                break;
 
             case "user_next_order":
                 int nextIndex = UserSessionManager.GetCurrentUserIndex(chatId) + 1;
                 await ShowOrderDetails(botClient, chatId, nextIndex);
                 break;
 
+            case "admin_next_order":
+                int nextIndexAdmin = UserSessionManager.GetCurrentUserIndex(chatId) + 1;
+                await ShowOrderDetailsAdmin(botClient, chatId, nextIndexAdmin);
+                break;
+
+
+        
             case "task_back":
                 if (Api.LoadUserData(out _, out role, out _))
                 {
@@ -236,4 +304,6 @@ public static class OrderHandler
             await botClient.SendTextMessageAsync(chatId, "Не удалось определить состояние меню.");
         }
     }
+
+   
 }
