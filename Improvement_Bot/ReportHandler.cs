@@ -104,7 +104,7 @@
             new[]
             {
                 InlineKeyboardButton.WithCallbackData("⬅️", "admin_prev_report"),
-           //     InlineKeyboardButton.WithCallbackData("Отчеты", $"all_reports{order.id_Order}"),
+                InlineKeyboardButton.WithCallbackData("Фото", $"report_photos{report.id_Report}"),
                 InlineKeyboardButton.WithCallbackData("➡️", "admin_next_report")
             },
             new[]

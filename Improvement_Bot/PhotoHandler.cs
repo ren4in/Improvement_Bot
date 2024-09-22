@@ -5,6 +5,11 @@ using System.Text;
 using System.Threading.Tasks;
 using Telegram.Bot;
 using Telegram.Bot.Types;
+using Telegram.Bot.Types.InputFiles;
+using Telegram.Bot.Types.ReplyMarkups;
+
+ 
+using static Microsoft.EntityFrameworkCore.DbLoggerCategory.Database;
 
 namespace Improvement_Bot
 {
@@ -92,6 +97,27 @@ namespace Improvement_Bot
             }
         }
 
+        public static async Task LoadPhotos(int? thisReport)
+        {
+            HttpResponseMessage response = await
+
+               Api.client.GetAsync(Api.APP_PATH + "/api/report_image/report/" + thisReport);
+            //     Console.WriteLine(Api.APP_PATH + "/api/Orders/user/" + thisOrder);
+            if (response.IsSuccessStatusCode)
+            {
+                var photosJson = await response.Content.ReadAsStringAsync();
+                PhotoDataStore.allPhotos = JsonConvert.DeserializeObject<List<Report_Image>>(photosJson);
+                Console.WriteLine("Фото загружены!");
+
+            }
+            else
+            {
+                Console.WriteLine("Ошибка сервера!");
+            }
+        }
+
+
+
 
         public static async Task HandleCallbackQuery(ITelegramBotClient botClient, CallbackQuery callbackQuery)
         {
@@ -111,11 +137,90 @@ namespace Improvement_Bot
                 UserSessionManager.ClearOrderCreationState(chatId);
 
 
+
                 await botClient.SendTextMessageAsync(chatId, "Отчет завершен. Возвращаюсь в главное меню.");
                 // Здесь можно реализовать возвращение в главное меню (отправка других команд или кнопок)
                 MenuManager.ShowUserMenu(botClient, chatId);
             }
+            else if (callbackQuery.Data == "admin_prev_photo")
+            {
+                int prevIndexAdminPhoto = UserSessionManager.GetCurrentUserIndex(chatId) - 1;
+                await ShowPhotoDetailsAdmin(botClient, chatId, prevIndexAdminPhoto);
+                return;
+
+            }
+            else if (callbackQuery.Data == "admin_next_photo")
+            {
+                int nextIndexAdminPhoto = UserSessionManager.GetCurrentUserIndex(chatId) + 1;
+                await ShowPhotoDetailsAdmin(botClient, chatId, nextIndexAdminPhoto);
+                return;
+
+            }
+            else if (callbackQuery.Data.StartsWith("report_photos"))
+            {
+                 int idReport = int.Parse(callbackQuery.Data.Substring("report_photos".Length).Trim());
+                Console.WriteLine(idReport);
+               await LoadPhotos(idReport);
+                await ShowPhotoDetailsAdmin(botClient, chatId, 0);
+
+            }
         }
+        public static async Task ShowPhotoDetailsAdmin(ITelegramBotClient botClient, long chatId, int photoIndex)
+        {
+            if (PhotoDataStore.allPhotos == null || PhotoDataStore.allPhotos.Count == 0)
+            {
+                await botClient.SendTextMessageAsync(chatId, "Список фото пуст.");
+                return;
+            }
+
+            // Определение индекса текущего фото
+            photoIndex = (photoIndex + PhotoDataStore.allPhotos.Count) % PhotoDataStore.allPhotos.Count;
+            UserSessionManager.SetCurrentUserIndex(chatId, photoIndex);
+
+            // Получение отчета с изображением
+            var reportImage = PhotoDataStore.allPhotos[photoIndex];
+
+            // Формирование клавиатуры для навигации
+            var inlineKeyboard = new InlineKeyboardMarkup(new[]
+            {
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData("⬅️", "admin_prev_photo"),
+            InlineKeyboardButton.WithCallbackData("Фото", $"report_photos{reportImage.id_Report}"),
+            InlineKeyboardButton.WithCallbackData("➡️", "admin_next_photo")
+        },
+        new[]
+        {
+            InlineKeyboardButton.WithCallbackData("Назад", "user_back")
+        }
+    });
+
+            // Проверка, есть ли изображение в отчете
+            if (reportImage.Image != null && reportImage.Image.Length > 0)
+            {
+                // Создание MemoryStream для отправки изображения
+                using (var stream = new MemoryStream(reportImage.Image))
+                {
+                    // Отправка изображения
+                    await botClient.SendPhotoAsync(
+                        chatId: chatId,
+                        photo: new InputOnlineFile(stream),
+                        caption: "Фото отчета",
+                        replyMarkup: inlineKeyboard
+                    );
+                }
+            }
+            else
+            {
+                // Если изображение отсутствует, отправляем текстовое сообщение
+                await botClient.SendTextMessageAsync(chatId, "Изображение отсутствует.", replyMarkup: inlineKeyboard);
+            }
+        }
+
+
+
+
+
 
         private static async void SaveReportImage(Report_Image reportImage)
         {

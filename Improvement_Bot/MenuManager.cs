@@ -160,8 +160,16 @@ namespace Improvement_Bot
                     
                     break;
 
+                case var s when s.StartsWith("report_photos"):
+                    await PhotoHandler.HandleCallbackQuery(botClient, callbackQuery);
+
+
+                    break;
+
                 case "add_more_photo":
                 case "finish_report":
+                case "admin_prev_photo":
+                case "admin_next_photo":
                     await PhotoHandler.HandleCallbackQuery(botClient, callbackQuery);
                     break;
 
